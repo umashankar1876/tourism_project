@@ -1,31 +1,42 @@
-"""register_data.py — GitHub Actions: register-dataset job.
-Creates HF dataset repo and uploads tourism.csv."""
+"""data_registration.py — GitHub Actions: register-dataset job.
+Combines explicit client token isolation with targeted folder uploads."""
 import os
 import sys
-from huggingface_hub import HfApi, login
+from huggingface_hub import HfApi
+from huggingface_hub.utils import RepositoryNotFoundError
 
-# Fetch token safely and clear out any weird trailing whitespaces/newlines
+# 1. Fetch token directly from the environment matrix
 hf_token = os.environ.get('HF_TOKEN', '').strip()
 
 if not hf_token:
-    print("CRITICAL: The 'HF_TOKEN' environment variable is missing or empty!")
+    print("CRITICAL: The 'HF_TOKEN' environment variable is missing or empty in the runner!")
     sys.exit(1)
 
-# FIXED: Explicitly disables saving credentials to the ephemeral runner's git helper
-login(token=hf_token, add_to_git_credential=False)
-api = HfApi()
+# 2. Initialize the API client by injecting the token string directly (Bypasses global login bugs!)
+api = HfApi(token=hf_token)
 
+# 3. Configure destination parameters
 HF_USER = os.getenv('HF_USER', 'umas1990') 
 DATASET_REPO = f'{HF_USER}/tourism-dataset'
+REPO_TYPE = "dataset"
 
-api.create_repo(repo_id=DATASET_REPO, repo_type='dataset', exist_ok=True)
-print(f'Dataset repo: https://huggingface.co/datasets/{DATASET_REPO}')
+# 4. Safe lookup and registration layer
+try:
+    api.repo_info(repo_id=DATASET_REPO, repo_type=REPO_TYPE)
+    print(f"Dataset Repository '{DATASET_REPO}' already exists. Proceeding to sync...")
+except RepositoryNotFoundError:
+    print(f"Dataset Repository '{DATASET_REPO}' not found. Initializing new repository asset...")
+    api.create_repo(repo_id=DATASET_REPO, repo_type=REPO_TYPE, private=False)
+    print(f"Dataset Repository '{DATASET_REPO}' successfully created.")
 
-# FIXED PATH: Targets the repository root path context correctly
-api.upload_file(
-    path_or_fileobj='data/tourism.csv',  
-    path_in_repo='tourism.csv',
-    repo_id=DATASET_REPO,
-    repo_type='dataset',
-)
-print('tourism.csv registered on Hugging Face Hub.')
+# 5. Sync the entire data folder relative to the GitHub Action root path context
+try:
+    api.upload_folder(
+        folder_path="data", # Points to root data directory unpacked by actions/checkout
+        repo_id=DATASET_REPO,
+        repo_type=REPO_TYPE,
+    )
+    print('✅ Complete dataset folder assets successfully registered on Hugging Face Hub.')
+except Exception as e:
+    print(f"❌ Upload failed dynamically: {str(e)}")
+    sys.exit(1)
