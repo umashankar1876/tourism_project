@@ -34,6 +34,7 @@ jobs:
           print(f"✅ HF_TOKEN is set (length: {len(token)} characters)")
           
           try:
+              user_info = whoami()
               login(token=token)
               user_info = whoami()
               print(f"✅ Token is VALID!")
