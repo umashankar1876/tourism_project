@@ -1,6 +1,6 @@
 pandas==2.2.1
 numpy==1.26.4
-scikit-learn==1.4.1.post1
+scikit-learn==1.6.1
 xgboost==2.0.3
 mlflow==2.12.1
 huggingface_hub==0.22.2
