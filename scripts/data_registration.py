@@ -32,7 +32,7 @@ except RepositoryNotFoundError:
 # 5. Sync the entire data folder relative to the GitHub Action root path context
 try:
     api.upload_folder(
-        folder_path="data", # Points to root data directory unpacked by actions/checkout
+        folder_path="tourism_project/data", # Points to root data directory unpacked by actions/checkout
         repo_id=DATASET_REPO,
         repo_type=REPO_TYPE,
     )
